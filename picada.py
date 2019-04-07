@@ -1,4 +1,5 @@
 import re
+from linprog import linsolve
 
 num_decisions = 0
 tasks=[]
@@ -247,7 +248,7 @@ def processObservation(tasks,observation,choice):
 			else:
 				son_node.changeObservations(1)
 			son_node.changeUtility(observation[0])
-		#chega a um node e este nao tem/tem subnodes dos quais nenhum é o correto
+		#chega a um node e este nao tem/tem subnodes dos quais nenhum e o correto
 		elif(son_node == None):
 			notToDelete=[]
 			#se tiver subnodes
@@ -279,6 +280,129 @@ def getTaskUtility(tasks):
 		utilities.append(task.calculateUtility())
 	return [tasks[utilities.index(max(utilities))].getName(),utilities.index(max(utilities))]
 
+def getAvgPlusMinTaskUtility(tasks):
+	result=[]
+	for task in tasks:
+		Avg=task.calculateUtility()
+		utilities = []
+		for option in task.getUtility():
+			utilities.append(option.getUtility())
+		minVal = min(utilities)
+		utilities=[minVal,Avg]
+		result.append(utilities)
+	return result
+
+def getRiskChoicesByMinMax(results,tasks):
+	A = [[]]
+	C=[]	
+	B=[0]
+	resultsFiltered=[]
+	correspondence=[]
+	for i in range(len(results)):
+		if len(resultsFiltered)==0:
+			resultsFiltered.append(results[i])
+			correspondence.append(len(resultsFiltered)-1)
+		else:
+			for j in range(len(resultsFiltered)):
+				if(results[i][1]==resultsFiltered[j][1]):
+					correspondence.append(j)
+					break
+				elif (j==(len(resultsFiltered)-1)):
+					resultsFiltered.append(results[i])
+					correspondence.append(len(resultsFiltered)-1)
+			
+	for task in resultsFiltered:
+		A[0].append(task[0]*-1.0)
+		C.append(task[1]*-1.0)
+	#all bigger than 0
+	for i in range(len(resultsFiltered)):
+		line=[]
+		for j in range(len(resultsFiltered)):
+			if(j==i):
+				line.append(-1)
+			else:
+				line.append(0)
+		A.append(line)
+		B.append(0)
+	for i in range(len(resultsFiltered)):
+		line=[]
+		for j in range(len(resultsFiltered)):
+			if(j==i):
+				line.append(1)
+			else:
+				line.append(0)
+		A.append(line)
+		B.append(1)
+	D=[]
+	E=[1]
+	line=[]
+	for i in range(len(resultsFiltered)):
+		line.append(1)
+	D.append(line)
+	
+	resolution, sol = linsolve( C, ineq_left = A, ineq_right = B, eq_left=D, eq_right=E)
+	
+	#[[percent,task], ...]
+	finalResult="("
+	num_of_equals=[]
+	for i in range(len(sol)):
+		counter=0
+		for j in range(len(correspondence)):
+			if (correspondence[j]==i):
+				counter+=1
+		num_of_equals.append(counter)
+	for i in range(len(correspondence)):
+		if(sol[correspondence[i]]!=0.0):
+			finalResult+= "{:.2f}".format(round(sol[correspondence[i]]/num_of_equals[correspondence[i]],2)) + ","
+			finalResult+=tasks[i].getName() + ";"
+		if(i==(len(correspondence)-1)):
+			finalResult=finalResult[:len(finalResult)-1]
+			finalResult+=")"
+	print(finalResult)
+			
+		
+		
+
+'''	
+	MaxVal=None
+	MaxValNonNeg=None
+	MaxIndexes=[]
+	MaxNonNegIndexes=[]
+	#falta caso em que o maior non neg pode nao balancar um negativo pq o min e treta
+	#falta o caso temos A=avg=2 min=1 vs B=avg=2 min=0 devia ser so A mas sao os dois indexes
+	for i in range(len(results)):
+		if results[i][0]>=0:
+			if(MaxValNonNeg==None):
+				MaxNonNegIndexes.append(i)
+				MaxValNonNeg=results[i][1]
+			elif(results[i][1]>MaxValNonNeg):
+				MaxNonNegIndexes=[i]
+				MaxValNonNeg=results[i][1]
+			elif(results[i][1]==MaxValNonNeg):
+				MaxNonNegIndexes.append(i)
+				MaxValNonNeg=results[i][1]
+	for i in range(len(results)):
+		if (results[i][0]<0 and results[i][0]+MaxValNonNeg>=0 and results[i][1]>MaxValNonNeg):
+			if(MaxVal==None):
+				MaxIndexes.append(i)
+				MaxVal=results[i][1]
+			elif(results[i][1]>MaxVal):
+				MaxIndexes=[]
+				MaxVal=results[i][1]
+			elif(results[i][1]==MaxVal):
+				MaxIndexes.append(i)
+				MaxVal=results[i][1]
+	print("MaxPos")
+	for i in MaxNonNegIndexes:
+		print(tasks[i].getName())
+	print("MaxWithNegs")
+	for i in MaxIndexes:
+		print(tasks[i].getName())
+	return
+'''		
+		
+			
+		
 text=input()
 text=text.split()
 
@@ -296,12 +420,9 @@ if text[0] == 'decide-rational':
 			print(choice[0])
 	
 if text[0] == 'decide-risk':
-	num_decisions=text[2]
-	
-'''
-#decide-rational (T1=[A=(60%,3),B=(40%,-1)],T2=[A=(30%,0),B=(70%,1)]) 1
-#decide-rational (T1=[A=(60%,3),B=(40%,-1)],T2=[A=(4,0),B=(6,1)]) 1
-decide-rational (T1=[A=(60%,3),B=(40%,-1)],T2=[A=(30%,0),B=(40%,[B1=(80%,[X=(20%,1),Y=(80%,2)]),B2=(20%,3)]),C=(30%,2)],T3=[A=(100%,1)]) 1
-
-
-'''
+	process(text[1], tasks)
+	#nao aparentam existir subniveis
+	#ver tasks com max utility sem ser negativa e com max utility com negativa retorna vetor com task1=[min max]
+	results=getAvgPlusMinTaskUtility(tasks)
+	getRiskChoicesByMinMax(results,tasks)
+	#choices (0.50,T1;0.50,T2)
