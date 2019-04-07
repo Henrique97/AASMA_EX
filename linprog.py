@@ -1,3 +1,4 @@
+#INTERNET CODE
 from fractions import Fraction
 class NumberTypeclass:
     def zero(self): return 0

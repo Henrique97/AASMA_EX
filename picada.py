@@ -290,6 +290,22 @@ def getAvgPlusMinTaskUtility(tasks):
 		minVal = min(utilities)
 		utilities=[minVal,Avg]
 		result.append(utilities)
+	flagHasPositive=False
+	globalMinMax=-9999
+	#globalMinMax=9999
+	for task in result:
+		if(task[0]>0):
+			flagHasPositive=True
+			break
+		else:
+			if(task[0]<0 and globalMinMax<task[0]):
+				globalMinMax=task[0]
+			'''if(task[0]<globalMinMax):
+				globalMinMax=task[0]'''	
+	if(not flagHasPositive):
+		for task in result:
+			task[0]+=(globalMinMax * -1.0 + 0.0000001)
+			task[1]+=(globalMinMax * -1.0)
 	return result
 
 def getRiskChoicesByMinMax(results,tasks):
@@ -304,13 +320,15 @@ def getRiskChoicesByMinMax(results,tasks):
 			correspondence.append(len(resultsFiltered)-1)
 		else:
 			for j in range(len(resultsFiltered)):
-				if(results[i][1]==resultsFiltered[j][1]):
+				if(results[i][1]==resultsFiltered[j][1] and results[i][0]==resultsFiltered[j][0]):
+					correspondence.append(j)
+					break
+				elif(results[i][1]==resultsFiltered[j][1] and results[i][0]>=0):
 					correspondence.append(j)
 					break
 				elif (j==(len(resultsFiltered)-1)):
 					resultsFiltered.append(results[i])
 					correspondence.append(len(resultsFiltered)-1)
-			
 	for task in resultsFiltered:
 		A[0].append(task[0]*-1.0)
 		C.append(task[1]*-1.0)
@@ -339,12 +357,17 @@ def getRiskChoicesByMinMax(results,tasks):
 	for i in range(len(resultsFiltered)):
 		line.append(1)
 	D.append(line)
-	
+	'''
+	print(correspondence)
+	print(results)
+	print(A,"\n",B,"\n",C,"\n",D,"\n",E,"\n")
+	'''
 	resolution, sol = linsolve( C, ineq_left = A, ineq_right = B, eq_left=D, eq_right=E)
 	
 	#[[percent,task], ...]
 	finalResult="("
 	num_of_equals=[]
+	
 	for i in range(len(sol)):
 		counter=0
 		for j in range(len(correspondence)):
@@ -352,7 +375,7 @@ def getRiskChoicesByMinMax(results,tasks):
 				counter+=1
 		num_of_equals.append(counter)
 	for i in range(len(correspondence)):
-		if(sol[correspondence[i]]!=0.0):
+		if(round(sol[correspondence[i]],2)!=0.0):
 			finalResult+= "{:.2f}".format(round(sol[correspondence[i]]/num_of_equals[correspondence[i]],2)) + ","
 			finalResult+=tasks[i].getName() + ";"
 		if(i==(len(correspondence)-1)):
