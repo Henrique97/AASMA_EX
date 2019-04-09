@@ -1,5 +1,6 @@
 import re
 from linprog import linsolve
+import math
 
 num_decisions = 0
 tasks=[]
@@ -18,23 +19,6 @@ class SingAgent():
 		return
 	def PresentResult(self):
 		return
-'''
-class Task():
-	Name = ''
-	options=[];
-	def searchAndAddOption(self):
-		return
-	def cleanOptions(self):
-		return
-	def CalcUtility(self):
-		return
-	def setOptions(self, optionsRec):
-		self.options=optionsRec
-	def setName(self,NameTask):
-		self.Name=NameTask
-	def getName(self):
-		return self.Name
-'''
 	
 class Option():
 	isPercent = False;
@@ -167,7 +151,7 @@ def evaluateObservation(text):
 def process(stringArg, tasks):
 	global newString
 	tasksText=[]
-	p=re.compile('T\d+=\\[')
+	p=re.compile('T\d+=\\[|T\d+\|T\d+=\\[')
 	m= p.finditer(stringArg)
 	for match in m:
 		tasksText.append(match.span())
@@ -381,51 +365,79 @@ def getRiskChoicesByMinMax(results,tasks):
 		if(i==(len(correspondence)-1)):
 			finalResult=finalResult[:len(finalResult)-1]
 			finalResult+=")"
-	print(finalResult)
+	print(finalResult)	
+		
+def buildNashMatrix(mineTasks,peerTasks):
+	line=[]
+	matrix=[]
+	for i in range(int(len(mineTasks))):
+		line.append([mineTasks[i].calculateUtility()])
+		if((i+1)%math.sqrt(len(peerTasks))==0):
+			matrix.append(line)
+			line=[]
+	collumn=[]
+	for i in range(int(len(peerTasks))):
+		collumn.append(peerTasks[i].calculateUtility())
+		if((i+1)%math.sqrt(len(mineTasks))==0):
+			for j in range(int(math.sqrt(len(mineTasks)))):
+				matrix[j][(i)//int(math.sqrt(len(mineTasks)))].append(collumn[j])
+			collumn=[]
+	return matrix
 			
-		
-		
-
-'''	
-	MaxVal=None
-	MaxValNonNeg=None
-	MaxIndexes=[]
-	MaxNonNegIndexes=[]
-	#falta caso em que o maior non neg pode nao balancar um negativo pq o min e treta
-	#falta o caso temos A=avg=2 min=1 vs B=avg=2 min=0 devia ser so A mas sao os dois indexes
-	for i in range(len(results)):
-		if results[i][0]>=0:
-			if(MaxValNonNeg==None):
-				MaxNonNegIndexes.append(i)
-				MaxValNonNeg=results[i][1]
-			elif(results[i][1]>MaxValNonNeg):
-				MaxNonNegIndexes=[i]
-				MaxValNonNeg=results[i][1]
-			elif(results[i][1]==MaxValNonNeg):
-				MaxNonNegIndexes.append(i)
-				MaxValNonNeg=results[i][1]
-	for i in range(len(results)):
-		if (results[i][0]<0 and results[i][0]+MaxValNonNeg>=0 and results[i][1]>MaxValNonNeg):
-			if(MaxVal==None):
-				MaxIndexes.append(i)
-				MaxVal=results[i][1]
-			elif(results[i][1]>MaxVal):
-				MaxIndexes=[]
-				MaxVal=results[i][1]
-			elif(results[i][1]==MaxVal):
-				MaxIndexes.append(i)
-				MaxVal=results[i][1]
-	print("MaxPos")
-	for i in MaxNonNegIndexes:
-		print(tasks[i].getName())
-	print("MaxWithNegs")
-	for i in MaxIndexes:
-		print(tasks[i].getName())
-	return
+def getNashPositions(matrix):
+	nashCells=[]
+	maxForEachLine=[]
+	maxForEachCollumn=[]
+	for i in range((len(matrix))):
+		maxValCol=matrix[i][0][1]
+		collumnMax=[i,0]
+		for j in range((len(matrix[0]))):
+			maxValLine=matrix[i][j][0]
+			if(matrix[i][j][1]>maxValCol):
+				collumnMax=[i,j]
+				maxValCol=matrix[i][j][1]
+		maxForEachCollumn.append(collumnMax)
+	for i in range((len(matrix))):
+		maxValLine=matrix[0][i][0]
+		lineMax=[0,i]
+		for j in range((len(matrix[0]))):
+			if(matrix[j][i][0]>maxValLine):
+				lineMax=[j,i]
+				maxValLine=matrix[j][i][0]
+		maxForEachLine.append(lineMax)
+	for i in range(len(maxForEachLine)):
+		maxForEachLine[i]=maxForEachLine[i][0]
+	for i in range(len(maxForEachCollumn)):
+		maxForEachCollumn[i]=maxForEachCollumn[i][1]
+	for i in range(len(maxForEachLine)):
+			if(i==maxForEachCollumn[maxForEachLine[i]]):
+				nashCells.append([maxForEachLine[i],i])
+	return nashCells
+	
+'''
+	for i in range((len(matrix))):
+		maxValLine=matrix[i][0][0]
+		lineMax=[]
+		maxValCol=matrix[0][i][1]
+		collumnMax=[]
+		for j in range((len(matrix))):
+			if(matrix[i][j][0]==maxValLine):
+				lineMax.append([i,j])
+			elif(matrix[i][j][0]>maxValLine):
+				lineMax=[[i,j]]
+				maxValLine=matrix[i][j][0]
+			if(matrix[j][i][1]==maxValCol):
+				collumnMax.append([j,i])
+			elif(matrix[j][i][1]>maxValCol):
+				collumnMax=[[j,i]]
+				maxValCol=matrix[j][i][1]
+		maxForEachLine.append(lineMax)
+		maxForEachCollumn.append(collumnMax)
+	print(maxForEachLine)
+	print(maxForEachCollumn)
 '''		
 		
-			
-		
+
 text=input()
 text=text.split()
 
@@ -449,3 +461,79 @@ if text[0] == 'decide-risk':
 	results=getAvgPlusMinTaskUtility(tasks)
 	getRiskChoicesByMinMax(results,tasks)
 	#choices (0.50,T1;0.50,T2)
+
+if text[0] == 'decide-conditional':
+	mineText=text[1][6:]
+	mineTasks=[]
+	peerTasks=[]
+	p=re.compile(',peer=\(')
+	m= p.search(mineText)
+	peerText=mineText[m.end():]
+	mineText=mineText[:m.start()]
+	process(mineText, mineTasks)
+	process(peerText, peerTasks)
+	
+	print("mine")
+	for task in mineTasks:
+		print(task.getName())
+	print("peer")
+	for task in peerTasks:
+		print(task.getName())
+
+if text[0] == 'decide-mix':
+	mineText=text[1][6:]
+	mineTasks=[]
+	peerTasks=[]
+	p=re.compile(',peer=\(')
+	m= p.search(mineText)
+	peerText=mineText[m.end():]
+	mineText=mineText[:m.start()]
+	process(mineText, mineTasks)
+	process(peerText, peerTasks)
+	
+	print("mine")
+	for task in mineTasks:
+		print(task.getName())
+	print("peer")
+	for task in peerTasks:
+		print(task.getName())
+	matrix=buildNashMatrix(mineTasks,peerTasks)
+	nashPositions=getNashPositions(matrix)
+	if(len(nashPositions)==0):
+		print("lul")
+		#do mixed
+	
+if text[0] == 'decide-nash':
+	mineText=text[1][6:]
+	mineTasks=[]
+	peerTasks=[]
+	p=re.compile(',peer=\(')
+	m= p.search(mineText)
+	peerText=mineText[m.end():]
+	mineText=mineText[:m.start()]
+	process(mineText, mineTasks)
+	process(peerText, peerTasks)
+		
+	matrix=buildNashMatrix(mineTasks,peerTasks)
+	nashPositions=getNashPositions(matrix)
+	if(len(nashPositions)==0):
+		print("blank-decision")
+	else:
+		payoffMaxIndex=0
+		payoffMax=matrix[nashPositions[0][0]][nashPositions[0][1]][0] + matrix[nashPositions[0][0]][nashPositions[0][1]][1]
+		for i in range(len(nashPositions)):
+			xcoord=nashPositions[i][0]
+			ycoord=nashPositions[i][1]
+			if((matrix[xcoord][ycoord][0]+matrix[xcoord][ycoord][1])>payoffMax or (matrix[xcoord][ycoord][0]+matrix[xcoord][ycoord][1]==payoffMax and xcoord<nashPositions[payoffMaxIndex][0])):
+				payoffMax=matrix[xcoord][ycoord][0]+matrix[xcoord][ycoord][1]
+				payoffMaxIndex=i
+		xcoord=nashPositions[payoffMaxIndex][0]
+		ycoord=nashPositions[payoffMaxIndex][1]
+		posMine= int((ycoord)* math.sqrt(len(mineTasks)) + xcoord)
+		posPeer= int((xcoord)* math.sqrt(len(mineTasks)) + ycoord)
+		taskM=mineTasks[posPeer].getName()
+		taskP=peerTasks[posMine].getName()
+		p=re.compile('T\d+')
+		taskM=p.match(taskM)
+		taskP=p.match(taskP)
+		print("mine=" + taskM.group() + ","+ "peer=" + taskP.group())
