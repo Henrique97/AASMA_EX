@@ -370,17 +370,31 @@ def getRiskChoicesByMinMax(results,tasks):
 def buildNashMatrix(mineTasks,peerTasks):
 	line=[]
 	matrix=[]
+	mineCounter=0
+	peerCounter=0
+	p=re.compile('T\d+\|')
+	taskName=(p.search(mineTasks[0].getName())).group()
+	for i in range(len(mineTasks)):
+		if(taskName!=p.search(mineTasks[i].getName()).group()):
+			break
+		else:
+			peerCounter+=1
+	for i in range(len(peerTasks)):
+		if(taskName!=p.search(peerTasks[i].getName()).group()):
+			break
+		else:
+			mineCounter+=1
 	for i in range(int(len(mineTasks))):
 		line.append([mineTasks[i].calculateUtility()])
-		if((i+1)%math.sqrt(len(peerTasks))==0):
+		if((i+1)%peerCounter==0):
 			matrix.append(line)
 			line=[]
 	collumn=[]
 	for i in range(int(len(peerTasks))):
 		collumn.append(peerTasks[i].calculateUtility())
-		if((i+1)%math.sqrt(len(mineTasks))==0):
-			for j in range(int(math.sqrt(len(mineTasks)))):
-				matrix[j][(i)//int(math.sqrt(len(mineTasks)))].append(collumn[j])
+		if((i+1)%mineCounter==0):
+			for j in range(mineCounter):
+				matrix[j][(i)//mineCounter].append(collumn[j])
 			collumn=[]
 	return matrix
 			
@@ -397,10 +411,10 @@ def getNashPositions(matrix):
 				collumnMax=[i,j]
 				maxValCol=matrix[i][j][1]
 		maxForEachCollumn.append(collumnMax)
-	for i in range((len(matrix))):
+	for i in range((len(matrix[0]))):
 		maxValLine=matrix[0][i][0]
 		lineMax=[0,i]
-		for j in range((len(matrix[0]))):
+		for j in range((len(matrix))):
 			if(matrix[j][i][0]>maxValLine):
 				lineMax=[j,i]
 				maxValLine=matrix[j][i][0]
@@ -513,7 +527,7 @@ if text[0] == 'decide-nash':
 	mineText=mineText[:m.start()]
 	process(mineText, mineTasks)
 	process(peerText, peerTasks)
-		
+	
 	matrix=buildNashMatrix(mineTasks,peerTasks)
 	nashPositions=getNashPositions(matrix)
 	if(len(nashPositions)==0):
