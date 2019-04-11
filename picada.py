@@ -404,28 +404,31 @@ def getNashPositions(matrix):
 	maxForEachCollumn=[]
 	for i in range((len(matrix))):
 		maxValCol=matrix[i][0][1]
-		collumnMax=[i,0]
+		collumnMax=[]
 		for j in range((len(matrix[0]))):
 			maxValLine=matrix[i][j][0]
 			if(matrix[i][j][1]>maxValCol):
-				collumnMax=[i,j]
+				collumnMax=[[i,j]]
 				maxValCol=matrix[i][j][1]
+			elif(matrix[i][j][1]==maxValCol):
+				collumnMax.append([i,j])
 		maxForEachCollumn.append(collumnMax)
 	for i in range((len(matrix[0]))):
 		maxValLine=matrix[0][i][0]
-		lineMax=[0,i]
+		lineMax=[]
 		for j in range((len(matrix))):
 			if(matrix[j][i][0]>maxValLine):
-				lineMax=[j,i]
+				lineMax=[[j,i]]
 				maxValLine=matrix[j][i][0]
+			elif(matrix[j][i][0]==maxValLine):
+				lineMax.append([j,i])
 		maxForEachLine.append(lineMax)
-	for i in range(len(maxForEachLine)):
-		maxForEachLine[i]=maxForEachLine[i][0]
-	for i in range(len(maxForEachCollumn)):
-		maxForEachCollumn[i]=maxForEachCollumn[i][1]
-	for i in range(len(maxForEachLine)):
-			if(i==maxForEachCollumn[maxForEachLine[i]]):
-				nashCells.append([maxForEachLine[i],i])
+	for i in range(len(maxForEachCollumn)): #tamanho colunas
+		for j in range(len(maxForEachCollumn[i])): #tamanho linhas
+			for k in range(len(maxForEachLine[maxForEachCollumn[i][j][1]])):
+				mineAction=maxForEachLine[maxForEachCollumn[i][j][1]]
+				if(i==mineAction[k][0] and maxForEachCollumn[i][j][1]==mineAction[k][1]):
+					nashCells.append(maxForEachCollumn[i][j])
 	return nashCells
 	
 '''
@@ -487,12 +490,29 @@ if text[0] == 'decide-conditional':
 	process(mineText, mineTasks)
 	process(peerText, peerTasks)
 	
-	print("mine")
-	for task in mineTasks:
-		print(task.getName())
-	print("peer")
-	for task in peerTasks:
-		print(task.getName())
+	matrix=buildNashMatrix(mineTasks,peerTasks)
+	nashPositions=getNashPositions(matrix)
+	if(len(nashPositions)==0):
+		print("fuck")
+	else:
+		payoffMaxIndex=0
+		payoffMax=matrix[nashPositions[0][0]][nashPositions[0][1]][0] + matrix[nashPositions[0][0]][nashPositions[0][1]][1]
+		for i in range(len(nashPositions)):
+			xcoord=nashPositions[i][0]
+			ycoord=nashPositions[i][1]
+			if((matrix[xcoord][ycoord][0]+matrix[xcoord][ycoord][1])>payoffMax or (matrix[xcoord][ycoord][0]+matrix[xcoord][ycoord][1]==payoffMax and xcoord<nashPositions[payoffMaxIndex][0])):
+				payoffMax=matrix[xcoord][ycoord][0]+matrix[xcoord][ycoord][1]
+				payoffMaxIndex=i
+		xcoord=nashPositions[payoffMaxIndex][0]
+		ycoord=nashPositions[payoffMaxIndex][1]
+		posMine= int((ycoord)* math.sqrt(len(mineTasks)) + xcoord)
+		posPeer= int((xcoord)* math.sqrt(len(mineTasks)) + ycoord)
+		taskM=mineTasks[posPeer].getName()
+		taskP=peerTasks[posMine].getName()
+		p=re.compile('T\d+')
+		taskM=p.match(taskM)
+		taskP=p.match(taskP)
+		print("mine=" + taskM.group() + ","+ "peer=" + taskP.group())
 
 if text[0] == 'decide-mix':
 	mineText=text[1][6:]
