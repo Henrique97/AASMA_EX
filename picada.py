@@ -493,7 +493,15 @@ if text[0] == 'decide-conditional':
 	matrix=buildNashMatrix(mineTasks,peerTasks)
 	nashPositions=getNashPositions(matrix)
 	if(len(nashPositions)==0):
-		print("fuck")
+		if( (matrix[0][0][0]-matrix[0][1][0]-matrix[1][0][0]+matrix[1][1][0]) != 0 and (matrix[0][0][1]-matrix[1][0][1]-matrix[0][1][1]+matrix[1][1][1])!=0):
+			peerT0prob=(matrix[1][1][0]-matrix[0][1][0])/(matrix[0][0][0]-matrix[0][1][0]-matrix[1][0][0]+matrix[1][1][0])
+			mineT0prob=(matrix[1][1][1]-matrix[1][0][1])/(matrix[0][0][1]-matrix[1][0][1]-matrix[0][1][1]+matrix[1][1][1])
+			if(peerT0prob>=0 and peerT0prob<=1 and mineT0prob>=0 and mineT0prob<=1):
+				print("mine=(" + "{:.2f}".format(round(mineT0prob,2)) +","+"{:.2f}".format(round(1-mineT0prob,2))+")" + ","+ "peer=(" + "{:.2f}".format(round(peerT0prob,2)) +","+"{:.2f}".format(round(1-peerT0prob,2)) +")")
+			else:
+				print("blank-decision")
+		else: 
+			print("blank-decision")
 	else:
 		payoffMaxIndex=0
 		payoffMax=matrix[nashPositions[0][0]][nashPositions[0][1]][0] + matrix[nashPositions[0][0]][nashPositions[0][1]][1]
@@ -514,7 +522,7 @@ if text[0] == 'decide-conditional':
 		taskP=p.match(taskP)
 		print("mine=" + taskM.group() + ","+ "peer=" + taskP.group())
 
-if text[0] == 'decide-mix':
+if text[0] == 'decide-mixed':
 	mineText=text[1][6:]
 	mineTasks=[]
 	peerTasks=[]
@@ -525,17 +533,18 @@ if text[0] == 'decide-mix':
 	process(mineText, mineTasks)
 	process(peerText, peerTasks)
 	
-	print("mine")
-	for task in mineTasks:
-		print(task.getName())
-	print("peer")
-	for task in peerTasks:
-		print(task.getName())
 	matrix=buildNashMatrix(mineTasks,peerTasks)
-	nashPositions=getNashPositions(matrix)
-	if(len(nashPositions)==0):
-		print("lul")
-		#do mixed
+	if( (matrix[0][0][0]-matrix[0][1][0]-matrix[1][0][0]+matrix[1][1][0]) != 0 and (matrix[0][0][1]-matrix[1][0][1]-matrix[0][1][1]+matrix[1][1][1])!=0):
+		peerT0prob=(matrix[1][1][0]-matrix[0][1][0])/(matrix[0][0][0]-matrix[0][1][0]-matrix[1][0][0]+matrix[1][1][0])
+		mineT0prob=(matrix[1][1][1]-matrix[1][0][1])/(matrix[0][0][1]-matrix[1][0][1]-matrix[0][1][1]+matrix[1][1][1])
+		
+		if(peerT0prob>=0 and peerT0prob<=1 and mineT0prob>=0 and mineT0prob<=1):
+			print("mine=(" + "{:.2f}".format(round(mineT0prob,2)) +","+"{:.2f}".format(round(1-mineT0prob,2))+")" + ","+ "peer=(" + "{:.2f}".format(round(peerT0prob,2)) +","+"{:.2f}".format(round(1-peerT0prob,2)) +")")
+		else:
+			print("blank-decision")
+	else: 
+		print("blank-decision")
+	#x=([1,1]-[1,0])/([0,0]-[1,0]+[1,1]-[0,1])
 	
 if text[0] == 'decide-nash':
 	mineText=text[1][6:]
